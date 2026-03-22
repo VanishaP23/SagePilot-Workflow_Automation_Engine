@@ -1,7 +1,6 @@
 from temporalio import activity
 from typing import Dict, Any
 import httpx
-import asyncio
 
 @activity.defn
 async def execute_http_request(config: Dict[str, Any]) -> Dict[str, Any]:
@@ -83,16 +82,6 @@ async def execute_decision(config: Dict[str, Any], payload: Dict[str, Any]) -> D
         "value": value,
         "actual_value": field_value
     }
-
-@activity.defn
-async def execute_wait(config: Dict[str, Any]) -> None:
-    duration = config.get("duration", 0)
-    unit = config.get("unit", "seconds")
-    
-    if unit == "minutes":
-        duration = duration * 60
-    
-    await asyncio.sleep(duration)
 
 @activity.defn
 async def execute_end(final_payload: Dict[str, Any]) -> None:

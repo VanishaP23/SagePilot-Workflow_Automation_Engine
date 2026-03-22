@@ -2,7 +2,6 @@ from datetime import timedelta
 from temporalio import workflow
 from temporalio.common import RetryPolicy
 from typing import List, Dict, Any
-import asyncio
 
 @workflow.defn
 class WorkflowExecutorWorkflow:
@@ -17,9 +16,7 @@ class WorkflowExecutorWorkflow:
         execution_order = self._topological_sort(nodes, adjacency, start_nodes)
         
         current_payload = initial_payload or {}
-        node_map = {n["id"]: n for n in nodes}
         
-        # Import activities inside the method to avoid import issues
         from . import activities
         
         for node in execution_order:
@@ -67,12 +64,19 @@ class WorkflowExecutorWorkflow:
                     ]
                 
                 elif node_type == "wait":
-                    await workflow.execute_activity(
-                        activities.execute_wait,
-                        node_config,
-                        start_to_close_timeout=timedelta(hours=24)
-                    )
-                    self._add_log(node, "completed", current_payload, {"message": "Wait completed"})
+                    duration = node_config.get("duration", 30)
+                    unit = node_config.get("unit", "seconds")
+                    
+                    if unit == "minutes":
+                        duration_seconds = duration * 60
+                    elif unit == "hours":
+                        duration_seconds = duration * 3600
+                    else:
+                        duration_seconds = duration
+                    
+                    # Use workflow.sleep() for DURABLE wait
+                    await workflow.sleep(duration_seconds)
+                    self._add_log(node, "completed", current_payload, {"message": f"Waited {duration} {unit}"})
                 
                 elif node_type == "end":
                     await workflow.execute_activity(
