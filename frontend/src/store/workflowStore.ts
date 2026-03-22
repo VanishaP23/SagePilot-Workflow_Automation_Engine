@@ -54,11 +54,14 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
   
   updateNodeConfig: (nodeId, config) => {
     const nodes = get().nodes.map((node) => {
-      if (node.id === nodeId) {
-        return { ...node, data: { ...node.data, config: { ...node.data.config, ...config } } };
-      }
-      return node;
-    });
+  if (node.id === nodeId) {
+    const nodeData = node.data as { label: string; config: any };
+    const nodeConfig = nodeData.config as any;
+    return { ...node, data: { ...nodeData, config: { ...nodeConfig, ...config } } };
+  }
+  return node;
+});
+
     set({ nodes });
   },
   
