@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from .api import workflows, execution, webhooks
+from .api import workflows, execution, webhooks, history
 from .config import settings
 
 app = FastAPI(
@@ -20,6 +20,7 @@ app.add_middleware(
 app.include_router(workflows.router)
 app.include_router(execution.router)
 app.include_router(webhooks.router)
+app.include_router(history.router)
 
 @app.get("/")
 async def root():

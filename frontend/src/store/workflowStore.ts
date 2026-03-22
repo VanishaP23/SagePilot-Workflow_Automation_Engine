@@ -7,6 +7,10 @@ interface WorkflowState {
   selectedNode: Node | null;
   executionLogs: any[];
   
+  // History for Undo/Redo
+  past: { nodes: Node[]; edges: Edge[] }[];
+  future: { nodes: Node[]; edges: Edge[] }[];
+  
   onNodesChange: (changes: NodeChange[]) => void;
   onEdgesChange: (changes: EdgeChange[]) => void;
   onConnect: (connection: Connection) => void;
@@ -15,6 +19,12 @@ interface WorkflowState {
   updateNodeConfig: (nodeId: string, config: any) => void;
   setExecutionLogs: (logs: any[]) => void;
   clearWorkflow: () => void;
+  
+  // Undo/Redo actions
+  undo: () => void;
+  redo: () => void;
+  canUndo: () => boolean;
+  canRedo: () => boolean;
 }
 
 export const useWorkflowStore = create<WorkflowState>((set, get) => ({
@@ -23,19 +33,33 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
   selectedNode: null,
   executionLogs: [],
   
+  // Initialize history
+  past: [],
+  future: [],
+  
+  // Save state to history before making changes
   onNodesChange: (changes) => {
+    const current = { nodes: get().nodes, edges: get().edges };
+    set({ past: [...get().past, current], future: [] });
     set({ nodes: applyNodeChanges(changes, get().nodes) });
   },
   
   onEdgesChange: (changes) => {
+    const current = { nodes: get().nodes, edges: get().edges };
+    set({ past: [...get().past, current], future: [] });
     set({ edges: applyEdgeChanges(changes, get().edges) });
   },
   
   onConnect: (connection) => {
+    const current = { nodes: get().nodes, edges: get().edges };
+    set({ past: [...get().past, current], future: [] });
     set({ edges: addEdge({ ...connection, animated: true }, get().edges) });
   },
   
   addNode: (type, position) => {
+    const current = { nodes: get().nodes, edges: get().edges };
+    set({ past: [...get().past, current], future: [] });
+    
     const newNode = {
       id: `${type}-${Date.now()}`,
       type,
@@ -52,22 +76,65 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
     set({ selectedNode: node });
   },
   
-  updateNodeConfig: (nodeId, config) => {
+ updateNodeConfig: (nodeId, config) => {
     const nodes = get().nodes.map((node) => {
-  if (node.id === nodeId) {
-    const nodeData = node.data as { label: string; config: any };
-    const nodeConfig = nodeData.config as any;
-    return { ...node, data: { ...nodeData, config: { ...nodeConfig, ...config } } };
-  }
-  return node;
-});
-
+      if (node.id === nodeId) {
+        // Cast node.data to the correct type
+        const nodeData = node.data as { label: string; config: any };
+        const nodeConfig = nodeData.config as any;
+        return { 
+          ...node, 
+          data: { 
+            ...nodeData, 
+            config: { ...nodeConfig, ...config } 
+          } 
+        };
+      }
+      return node;
+    });
     set({ nodes });
   },
+
   
   setExecutionLogs: (logs) => set({ executionLogs: logs }),
   
-  clearWorkflow: () => set({ nodes: [], edges: [], selectedNode: null, executionLogs: [] }),
+  clearWorkflow: () => set({ nodes: [], edges: [], selectedNode: null, executionLogs: [], past: [], future: [] }),
+  
+  // Undo/Redo implementation
+  undo: () => {
+    const { past, future, nodes, edges } = get();
+    if (past.length === 0) return;
+    
+    const previous = past[past.length - 1];
+    const newPast = past.slice(0, past.length - 1);
+    
+    set({
+      past: newPast,
+      future: [{ nodes, edges }, ...future],
+      nodes: previous.nodes,
+      edges: previous.edges,
+      selectedNode: null,
+    });
+  },
+  
+  redo: () => {
+    const { past, future, nodes, edges } = get();
+    if (future.length === 0) return;
+    
+    const next = future[0];
+    const newFuture = future.slice(1);
+    
+    set({
+      past: [...past, { nodes, edges }],
+      future: newFuture,
+      nodes: next.nodes,
+      edges: next.edges,
+      selectedNode: null,
+    });
+  },
+  
+  canUndo: () => get().past.length > 0,
+  canRedo: () => get().future.length > 0,
 }));
 
 function getNodeLabel(type: string): string {
