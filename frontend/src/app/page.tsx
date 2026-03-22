@@ -9,6 +9,8 @@ import { WorkflowHistory } from "@/components/WorkflowHistory";
 import { useWorkflowStore } from "@/store/workflowStore";
 import { useState, useEffect } from "react";
 
+const API_URL = "https://sagepilot-workflow-automation-engine.onrender.com";
+
 export default function Home() {
   const [darkMode, setDarkMode] = useState(false);
   const [activeTab, setActiveTab] = useState<'config' | 'execution' | 'history'>('config');
@@ -32,10 +34,16 @@ export default function Home() {
   }, [undo, redo]);
   
   const handleRun = async () => {
-    const workflowData = useWorkflowStore.getState();
-    console.log('Running workflow:', workflowData);
-    alert('Workflow execution would start here.');
-  };
+  try {
+    const response = await fetch(`${API_URL}/api/workflows/1/run`, {
+      method: "POST"
+    });
+    const result = await response.json();
+    alert(`Done! Status: ${result.status}`);
+  } catch (error) {
+    alert("Error: Backend not responding");
+  }
+};
 
   const handleNewWorkflow = () => {
     clearWorkflow();
