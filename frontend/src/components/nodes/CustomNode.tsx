@@ -26,11 +26,12 @@ const NODE_ICONS: Record<string, string> = {
 export const CustomNode = memo(({ data, type, selected }: NodeProps) => {
   const colorClass = NODE_COLORS[type as string] || "bg-gray-500";
   const icon = NODE_ICONS[type as string] || "📦";
+  const isDecision = type === "decision";
 
   return (
     <div
       className={`
-        min-w-[150px] px-4 py-3 rounded-lg border-2 shadow-lg
+        relative min-w-[150px] px-4 py-3 rounded-lg border-2 shadow-lg
         ${colorClass} text-white
         ${selected ? "border-yellow-400 border-4" : "border-transparent"}
         transition-all duration-200
@@ -39,23 +40,58 @@ export const CustomNode = memo(({ data, type, selected }: NodeProps) => {
       <div className="flex items-center gap-2">
         <span className="text-xl">{icon}</span>
         <span className="font-medium">{String(data.label)}</span>
-
       </div>
-      
+
+      {/* INPUT HANDLE - All nodes except triggers and decision */}
       {type !== "manual_trigger" && type !== "webhook_trigger" && (
-        <Handle type="target" position={Position.Left} className="w-4 h-4 bg-white border-2 border-gray-400" />
+        <Handle
+          type="target"
+          position={Position.Left}
+          id="input"
+          className="!w-4 !h-4 !bg-white !border-2 !border-gray-600"
+        />
       )}
-      
-      {type !== "end" && (
-        <Handle type="source" position={Position.Right} id="default" className="w-4 h-4 bg-white border-2 border-gray-400" />
+
+      {/* OUTPUT HANDLE - All nodes except END and DECISION */}
+      {type !== "end" && !isDecision && (
+        <Handle
+          type="source"
+          position={Position.Right}
+          id="output"
+          className="!w-4 !h-4 !bg-white !border-2 !border-gray-600"
+        />
       )}
-      
-      {type === "decision" && (
+
+      {/* DECISION NODE - True/False Output Handles */}
+      {isDecision && (
         <>
-          <div className="absolute -right-8 top-0 text-xs text-white bg-green-600 px-1 rounded">T</div>
-          <Handle type="source" position={Position.Right} id="true" style={{ top: "30%" }} className="w-4 h-4 bg-green-400 border-2 border-white" />
-          <div className="absolute -right-8 bottom-0 text-xs text-white bg-red-600 px-1 rounded">F</div>
-          <Handle type="source" position={Position.Right} id="false" style={{ top: "70%" }} className="w-4 h-4 bg-red-400 border-2 border-white" />
+          {/* True handle */}
+          <div className="absolute -right-6 top-1/4 transform -translate-y-1/2">
+            <div className="absolute -right-4 top-1/2 -translate-y-1/2 text-xs text-white bg-green-600 px-1.5 py-0.5 rounded font-bold">
+              T
+            </div>
+            <Handle
+              type="source"
+              position={Position.Right}
+              id="true"
+              className="!w-4 !h-4 !bg-green-400 !border-2 !border-green-600"
+              style={{ top: "0%" }}
+            />
+          </div>
+
+          {/* False handle */}
+          <div className="absolute -right-6 bottom-1/4 transform translate-y-1/2">
+            <div className="absolute -right-4 top-1/2 -translate-y-1/2 text-xs text-white bg-red-600 px-1.5 py-0.5 rounded font-bold">
+              F
+            </div>
+            <Handle
+              type="source"
+              position={Position.Right}
+              id="false"
+              className="!w-4 !h-4 !bg-red-400 !border-2 !border-red-600"
+              style={{ top: "100%" }}
+            />
+          </div>
         </>
       )}
     </div>
