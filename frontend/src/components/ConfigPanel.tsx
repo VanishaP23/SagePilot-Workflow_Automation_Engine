@@ -30,7 +30,8 @@ export function ConfigPanel() {
 
   return (
     <div className="p-4">
-      <h2 className="text-lg font-bold mb-4 text-gray-800 dark:text-white">⚙️ {selectedNode.data.label}</h2>
+      <h2 className="text-lg font-bold mb-4 text-gray-800 dark:text-white">⚙️ {String(selectedNode.data.label)}</h2>
+
       
       <div className="space-y-4">
         {selectedNode.type === "manual_trigger" && (
