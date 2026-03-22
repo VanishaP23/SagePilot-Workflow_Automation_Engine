@@ -13,9 +13,8 @@ export default function Home() {
   const [darkMode, setDarkMode] = useState(false);
   const [activeTab, setActiveTab] = useState<'config' | 'execution' | 'history'>('config');
   const [executionId, setExecutionId] = useState<string | null>(null);
-  const { undo, redo, canUndo, canRedo } = useWorkflowStore();
+  const { undo, redo, canUndo, canRedo, clearWorkflow } = useWorkflowStore();
   
-  // Keyboard shortcuts for Undo/Redo
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
@@ -33,28 +32,34 @@ export default function Home() {
   }, [undo, redo]);
   
   const handleRun = async () => {
-    // Get workflow data and send to backend
     const workflowData = useWorkflowStore.getState();
     console.log('Running workflow:', workflowData);
-    alert('Workflow execution would start here. Connect to backend API for full functionality.');
+    alert('Workflow execution would start here.');
+  };
+
+  const handleNewWorkflow = () => {
+    clearWorkflow();
+    alert('New workflow created!');
   };
   
   return (
     <div className={`min-h-screen ${darkMode ? "dark bg-gray-900" : "bg-gray-50"}`}>
       <ReactFlowProvider>
         <div className="flex h-screen">
-          {/* Left Sidebar - Node Palette */}
           <div className="w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 overflow-y-auto">
             <NodePalette />
           </div>
           
-          {/* Main Canvas */}
           <div className="flex-1 relative">
             <WorkflowCanvas />
             
-            {/* Top Bar */}
             <div className="absolute top-4 right-4 flex gap-2 z-10">
-              {/* Undo/Redo Buttons */}
+              <button
+                onClick={handleNewWorkflow}
+                className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+              >
+                ➕ New
+              </button>
               <button
                 onClick={undo}
                 disabled={!canUndo()}
@@ -63,7 +68,6 @@ export default function Home() {
                     ? 'bg-gray-700 hover:bg-gray-600 text-white' 
                     : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                 }`}
-                title="Undo (Ctrl+Z)"
               >
                 ↩️ Undo
               </button>
@@ -75,7 +79,6 @@ export default function Home() {
                     ? 'bg-gray-700 hover:bg-gray-600 text-white' 
                     : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                 }`}
-                title="Redo (Ctrl+Y)"
               >
                 ↪️ Redo
               </button>
@@ -94,9 +97,7 @@ export default function Home() {
             </div>
           </div>
           
-          {/* Right Sidebar - Config Panel */}
           <div className="w-96 bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 overflow-y-auto">
-            {/* Tab Buttons */}
             <div className="flex border-b border-gray-200 dark:border-gray-700">
               <button
                 onClick={() => setActiveTab('config')}
@@ -130,7 +131,6 @@ export default function Home() {
               </button>
             </div>
             
-            {/* Tab Content */}
             <div className="p-4">
               {activeTab === 'config' && <ConfigPanel />}
               {activeTab === 'execution' && <ExecutionStatus />}
