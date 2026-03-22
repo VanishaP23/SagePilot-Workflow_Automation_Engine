@@ -38,7 +38,8 @@ export const CustomNode = memo(({ data, type, selected }: NodeProps) => {
     >
       <div className="flex items-center gap-2">
         <span className="text-xl">{icon}</span>
-        <span className="font-medium">{data.label}</span>
+        <span className="font-medium">{String(data.label)}</span>
+
       </div>
       
       {type !== "manual_trigger" && type !== "webhook_trigger" && (
