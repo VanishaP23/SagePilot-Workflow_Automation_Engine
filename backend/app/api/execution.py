@@ -3,14 +3,13 @@ from ..database import get_db
 from ..temporal.client import execute_workflow
 from ..utils.dag_validator import validate_dag
 import uuid
+from datetime import datetime
 
 router = APIRouter(prefix="/api/workflows", tags=["execution"])
 
 
 @router.post("/{workflow_id}/run")
 async def run_workflow(workflow_id: str):
-    execution_id = str(uuid.uuid4())
-    
     db = get_db()
     response = db.table("workflows").select("*").eq("id", workflow_id).execute()
     
@@ -25,19 +24,42 @@ async def run_workflow(workflow_id: str):
     if not is_valid:
         raise HTTPException(status_code=400, detail=error_msg)
     
+    execution_id = str(uuid.uuid4())
+    
+    db.table("executions").insert({
+        "id": execution_id,
+        "workflow_id": workflow_id,
+        "status": "running",
+        "started_at": datetime.utcnow().isoformat(),
+        "logs": [],
+        "result": None
+    }).execute()
+    
     try:
-        result = await execute_workflow(workflow_id)
+        result = await execute_workflow(workflow_id, nodes, edges)
+        
+        db.table("executions").update({
+            "status": "completed",
+            "completed_at": datetime.utcnow().isoformat(),
+            "logs": result.get("logs", []),
+            "result": result.get("final_payload")
+        }).eq("id", execution_id).execute()
+        
         return {
             "execution_id": execution_id,
             "status": "completed",
             "logs": result.get("logs", [])
         }
     except Exception as e:
+        db.table("executions").update({
+            "status": "failed",
+            "completed_at": datetime.utcnow().isoformat()
+        }).eq("id", execution_id).execute()
+        
         return {
             "execution_id": execution_id,
             "status": "failed",
-            "error": str(e),
-            "logs": []
+            "error": str(e)
         }
 
 

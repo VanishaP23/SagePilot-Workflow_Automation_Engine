@@ -7,7 +7,6 @@ from .activities import (
     execute_http_request,
     execute_transform,
     execute_decision,
-    execute_wait,
     execute_end
 )
 
@@ -23,12 +22,12 @@ async def get_temporal_client() -> Client:
         )
     return _temporal_client
 
-async def execute_workflow(workflow_id: str, initial_payload: dict = None):
+async def execute_workflow(workflow_id: str, nodes: list, edges: list, initial_payload: dict = None):
     client = await get_temporal_client()
     
     result = await client.execute_workflow(
         WorkflowExecutorWorkflow.run,
-        workflow_id,
+        [workflow_id, nodes, edges, initial_payload],
         id_prefix=f"wf-{workflow_id[:8]}",
         task_queue="sage-pilot-tasks"
     )

@@ -9,8 +9,12 @@ class WorkflowExecutorWorkflow:
         self.logs: List[Dict] = []
     
     @workflow.run
-    async def run(self, workflow_id: str, nodes: List[Dict], edges: List[Dict], 
-                  initial_payload: Dict = None) -> Dict:
+    async def run(self, params: List) -> Dict:
+        workflow_id = params[0]
+        nodes = params[1]
+        edges = params[2]
+        initial_payload = params[3] if len(params) > 3 else None
+        
         adjacency = self._build_adjacency(edges)
         start_nodes = self._find_start_nodes(nodes)
         execution_order = self._topological_sort(nodes, adjacency, start_nodes)
@@ -20,8 +24,8 @@ class WorkflowExecutorWorkflow:
         from . import activities
         
         for node in execution_order:
-            node_type = node["type"]
-            node_config = node.get("configuration", {})
+            node_type = node.get("type")
+            node_config = node.get("data", {}).get("config", {})
             
             try:
                 if node_type == "manual_trigger":
@@ -74,7 +78,6 @@ class WorkflowExecutorWorkflow:
                     else:
                         duration_seconds = duration
                     
-                    # Use workflow.sleep() for DURABLE wait
                     await workflow.sleep(duration_seconds)
                     self._add_log(node, "completed", current_payload, {"message": f"Waited {duration} {unit}"})
                 
@@ -126,8 +129,10 @@ class WorkflowExecutorWorkflow:
     
     def _add_log(self, node: Dict, status: str, input_data: Any, output_data: Any, error: str = None):
         from datetime import datetime
+        node_name = node.get("data", {}).get("label", node.get("type", "Unknown"))
         self.logs.append({
             "node_id": node["id"],
+            "node_name": node_name,
             "node_type": node["type"],
             "status": status,
             "input": input_data,
