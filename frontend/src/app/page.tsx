@@ -13,7 +13,9 @@ export default function Home() {
   const [darkMode, setDarkMode] = useState(false);
   const [activeTab, setActiveTab] = useState<'config' | 'execution' | 'history'>('config');
   const [executionId, setExecutionId] = useState<string | null>(null);
-  const { undo, redo, canUndo, canRedo } = useWorkflowStore();
+  const [workflowName, setWorkflowName] = useState("My Workflow");
+  const [isEditing, setIsEditing] = useState(false);
+  const { undo, redo, canUndo, canRedo, nodes, edges, setNodes, setEdges } = useWorkflowStore();
   
   // Keyboard shortcuts for Undo/Redo
   useEffect(() => {
@@ -33,10 +35,16 @@ export default function Home() {
   }, [undo, redo]);
   
   const handleRun = async () => {
-    // Get workflow data and send to backend
     const workflowData = useWorkflowStore.getState();
     console.log('Running workflow:', workflowData);
     alert('Workflow execution would start here. Connect to backend API for full functionality.');
+  };
+
+  const handleNewWorkflow = () => {
+    setNodes([]);
+    setEdges([]);
+    setWorkflowName("My Workflow");
+    alert('New workflow created! Start adding nodes from the left panel.');
   };
   
   return (
@@ -53,7 +61,40 @@ export default function Home() {
             <WorkflowCanvas />
             
             {/* Top Bar */}
+            <div className="absolute top-4 left-1/2 transform -translate-x-1/2 flex items-center gap-4 z-10">
+              {/* Workflow Name */}
+              <div className="bg-white dark:bg-gray-800 px-4 py-2 rounded-lg shadow-md flex items-center gap-2">
+                <span className="text-gray-500">📁</span>
+                {isEditing ? (
+                  <input
+                    type="text"
+                    value={workflowName}
+                    onChange={(e) => setWorkflowName(e.target.value)}
+                    onBlur={() => setIsEditing(false)}
+                    onKeyDown={(e) => e.key === 'Enter' && setIsEditing(false)}
+                    className="bg-transparent border-b-2 border-blue-500 outline-none text-gray-800 dark:text-white font-medium"
+                    autoFocus
+                  />
+                ) : (
+                  <span 
+                    onClick={() => setIsEditing(true)} 
+                    className="text-gray-800 dark:text-white font-medium cursor-pointer hover:text-blue-500"
+                  >
+                    {workflowName}
+                  </span>
+                )}
+              </div>
+            </div>
+
             <div className="absolute top-4 right-4 flex gap-2 z-10">
+              {/* New Workflow Button */}
+              <button
+                onClick={handleNewWorkflow}
+                className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                title="Create New Workflow"
+              >
+                ➕ New Workflow
+              </button>
               {/* Undo/Redo Buttons */}
               <button
                 onClick={undo}
