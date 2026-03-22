@@ -22,6 +22,10 @@ export function WorkflowCanvas() {
     selectNode(null);
   }, [selectNode]);
 
+  const handleNodeClick = useCallback((_: any, node: any) => {
+    selectNode(node);
+  }, [selectNode]);
+
   return (
     <div className="w-full h-full bg-gray-50 dark:bg-gray-900">
       <ReactFlow
@@ -31,6 +35,7 @@ export function WorkflowCanvas() {
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
         onPaneClick={handlePaneClick}
+        onNodeClick={handleNodeClick}
         nodeTypes={nodeTypes}
         fitView
         snapToGrid
