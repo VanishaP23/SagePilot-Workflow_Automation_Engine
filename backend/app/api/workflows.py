@@ -30,7 +30,6 @@ async def create_workflow(workflow: WorkflowCreateRequest):
     data = {
         "id": workflow_id,
         "name": workflow.name,
-        "description": workflow.description or "",
         "nodes": workflow.nodes,
         "edges": workflow.edges,
         "created_at": datetime.utcnow().isoformat(),
@@ -59,7 +58,6 @@ async def update_workflow(workflow_id: str, workflow: WorkflowCreateRequest):
     
     data = {
         "name": workflow.name,
-        "description": workflow.description or "",
         "nodes": workflow.nodes,
         "edges": workflow.edges,
         "updated_at": datetime.utcnow().isoformat()
