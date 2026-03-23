@@ -19,7 +19,8 @@ async def get_temporal_client() -> Client:
         _temporal_client = await Client.connect(
             settings.TEMPORAL_HOST,
             namespace=settings.TEMPORAL_NAMESPACE,
-            api_key=settings.TEMPORAL_API_KEY
+            api_key=settings.TEMPORAL_API_KEY,
+            tls=True
         )
     return _temporal_client
 
