@@ -9,7 +9,7 @@ import { WorkflowHistory } from "@/components/WorkflowHistory";
 import { useWorkflowStore } from "@/store/workflowStore";
 import { useState, useEffect } from "react";
 
-const API_URL = "https://sagepilot-workflow-automation-engine.onrender.com";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 export default function Home() {
   const [darkMode, setDarkMode] = useState(false);
