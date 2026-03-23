@@ -2,9 +2,19 @@ from fastapi import APIRouter, HTTPException
 from ..database import get_db
 from datetime import datetime
 
-router = APIRouter(prefix="/api/workflows", tags=["history"])
+router = APIRouter(prefix="/api/history", tags=["history"])
 
-@router.get("/{workflow_id}/history")
+@router.get("")
+async def get_all_history():
+    """Get all past executions across all workflows"""
+    db = get_db()
+    try:
+        response = db.table("executions").select("*").order("started_at", desc=True).execute()
+        return response.data
+    except Exception as e:
+        return {"error": str(e), "executions": []}
+
+@router.get("/{workflow_id}")
 async def get_workflow_history(workflow_id: str):
     """Get execution history for a workflow"""
     db = get_db()
@@ -15,7 +25,7 @@ async def get_workflow_history(workflow_id: str):
     except Exception as e:
         return {"error": str(e), "executions": []}
 
-@router.post("/{workflow_id}/history")
+@router.post("/{workflow_id}")
 async def create_execution(workflow_id: str):
     """Create a new execution record"""
     db = get_db()
@@ -37,7 +47,7 @@ async def create_execution(workflow_id: str):
     except Exception as e:
         return {"error": str(e)}
 
-@router.put("/{workflow_id}/history/{execution_id}")
+@router.put("/{workflow_id}/{execution_id}")
 async def update_execution(workflow_id: str, execution_id: str, status: str, logs: list = None, result: dict = None):
     """Update execution status"""
     db = get_db()

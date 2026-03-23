@@ -143,6 +143,28 @@ export default function Home() {
     setTimeout(() => setMessage(null), 3000);
   };
 
+  // Load workflow from history
+  const { setWorkflowData } = useWorkflowStore();
+  const handleLoadWorkflow = async (id: string) => {
+    setMessage("Loading workflow...");
+    try {
+      const response = await fetch(`${API_URL}/api/workflows/${id}`);
+      if (!response.ok) throw new Error("Workflow not found");
+      
+      const data = await response.json();
+      setWorkflowId(data.id);
+      setWorkflowName(data.name || "Untitled Workflow");
+      setWorkflowData(data.nodes || [], data.edges || []);
+      
+      setActiveTab('config');
+      setMessage("Workflow loaded!");
+    } catch (error) {
+      setMessage("Load failed!");
+      console.error(error);
+    }
+    setTimeout(() => setMessage(null), 3000);
+  };
+
   return (
     <div className={`min-h-screen ${darkMode ? "dark bg-gray-900" : "bg-gray-50"}`}>
       <ReactFlowProvider>
@@ -257,7 +279,7 @@ export default function Home() {
             <div className="p-4">
               {activeTab === 'config' && <ConfigPanel />}
               {activeTab === 'execution' && <ExecutionStatus />}
-              {activeTab === 'history' && <WorkflowHistory workflowId={workflowId} />}
+              {activeTab === 'history' && <WorkflowHistory workflowId={workflowId} onLoad={handleLoadWorkflow} />}
             </div>
           </div>
         </div>

@@ -17,19 +17,22 @@ interface Execution {
 
 interface WorkflowHistoryProps {
   workflowId: string | null;
+  onLoad?: (workflowId: string) => void;
 }
 
-export function WorkflowHistory({ workflowId }: WorkflowHistoryProps) {
+export function WorkflowHistory({ workflowId, onLoad }: WorkflowHistoryProps) {
   const [history, setHistory] = useState<Execution[]>([]);
   const [loading, setLoading] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   
   const fetchHistory = useCallback(async () => {
-    if (!workflowId) return;
-    
     setLoading(true);
     try {
-      const response = await fetch(`${API_URL}/api/workflows/${workflowId}/history`);
+      const url = workflowId 
+        ? `${API_URL}/api/history/${workflowId}` 
+        : `${API_URL}/api/history`;
+        
+      const response = await fetch(url);
       const data = await response.json();
       
       if (Array.isArray(data)) {
@@ -45,6 +48,7 @@ export function WorkflowHistory({ workflowId }: WorkflowHistoryProps) {
     setLoading(false);
   }, [workflowId]);
   
+  // Fetch history on mount
   useEffect(() => {
     fetchHistory();
   }, [fetchHistory]);
@@ -135,6 +139,17 @@ export function WorkflowHistory({ workflowId }: WorkflowHistoryProps) {
                     <span className="font-medium text-sm capitalize">
                       {execution.status}
                     </span>
+                    {onLoad && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onLoad(execution.workflow_id);
+                        }}
+                        className="ml-2 px-2 py-0.5 text-[10px] bg-blue-100 hover:bg-blue-200 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 rounded border border-blue-200 dark:border-blue-800"
+                      >
+                        📂 Load Workflow
+                      </button>
+                    )}
                   </div>
                   <span className="text-xs text-gray-500">
                     {formatDate(execution.started_at)}

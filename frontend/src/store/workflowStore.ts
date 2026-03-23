@@ -26,6 +26,7 @@ interface WorkflowState {
   canUndo: () => boolean;
   canRedo: () => boolean;
   
+  setWorkflowData: (nodes: Node[], edges: Edge[]) => void;
   // Helper to save snapshot before meaningful changes
   _saveSnapshot: () => void;
 }
@@ -156,6 +157,11 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
       edges: next.edges,
       selectedNode: null,
     });
+  },
+  
+  setWorkflowData: (nodes, edges) => {
+    get()._saveSnapshot();
+    set({ nodes, edges, selectedNode: null });
   },
   
   canUndo: () => get().past.length > 0,
