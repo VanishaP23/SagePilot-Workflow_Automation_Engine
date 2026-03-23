@@ -1,9 +1,10 @@
 "use client";
 
 import { useCallback } from "react";
-import { ReactFlow } from "@xyflow/react";
+import { ReactFlow, ConnectionLineType, Panel } from "@xyflow/react";
 import { useWorkflowStore } from "@/store/workflowStore";
 import { CustomNode } from "./nodes/CustomNode";
+import "@xyflow/react/dist/style.css";
 
 const nodeTypes = {
   manual_trigger: CustomNode,
@@ -22,7 +23,7 @@ export function WorkflowCanvas() {
     selectNode(null);
   }, [selectNode]);
 
-  const handleNodeClick = useCallback((_: any, node: any) => {
+  const handleNodeClick = useCallback((_: unknown, node: any) => {
     selectNode(node);
   }, [selectNode]);
 
@@ -43,8 +44,19 @@ export function WorkflowCanvas() {
         defaultEdgeOptions={{
           animated: true,
           style: { stroke: "#6366f1", strokeWidth: 2 },
+          type: "smoothstep",
         }}
-      />
+        connectionLineType={ConnectionLineType.SmoothStep}
+        connectionLineStyle={{
+          stroke: "#6366f1",
+          strokeWidth: 2,
+        }}
+        fitViewOptions={{ padding: 0.2 }}
+      >
+        <div className="text-gray-500 text-sm p-4">
+          Click nodes from the left panel to add them
+        </div>
+      </ReactFlow>
     </div>
   );
 }
