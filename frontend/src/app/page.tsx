@@ -257,7 +257,7 @@ export default function Home() {
             <div className="p-4">
               {activeTab === 'config' && <ConfigPanel />}
               {activeTab === 'execution' && <ExecutionStatus />}
-              {activeTab === 'history' && <WorkflowHistory />}
+              {activeTab === 'history' && <WorkflowHistory workflowId={workflowId} />}
             </div>
           </div>
         </div>

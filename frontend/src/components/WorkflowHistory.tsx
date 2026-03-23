@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -12,43 +12,42 @@ interface Execution {
   completed_at?: string;
   logs: any[];
   result?: any;
+  error?: string;
 }
 
-export function WorkflowHistory() {
+interface WorkflowHistoryProps {
+  workflowId: string | null;
+}
+
+export function WorkflowHistory({ workflowId }: WorkflowHistoryProps) {
   const [history, setHistory] = useState<Execution[]>([]);
   const [loading, setLoading] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   
-  useEffect(() => {
-    const mockHistory: Execution[] = [
-      {
-        id: 'exec-001',
-        workflow_id: 'workflow-1',
-        status: 'completed',
-        started_at: new Date(Date.now() - 3600000).toISOString(),
-        completed_at: new Date(Date.now() - 3500000).toISOString(),
-        logs: [
-          { node_id: '1', node_type: 'manual_trigger', status: 'completed', timestamp: new Date().toISOString() },
-          { node_id: '2', node_type: 'transform_data', status: 'completed', timestamp: new Date().toISOString() },
-          { node_id: '3', node_type: 'end', status: 'completed', timestamp: new Date().toISOString() },
-        ],
-        result: { message: 'Hello', transformed: 'HELLO' },
-      },
-      {
-        id: 'exec-002',
-        workflow_id: 'workflow-1',
-        status: 'failed',
-        started_at: new Date(Date.now() - 7200000).toISOString(),
-        completed_at: new Date(Date.now() - 7100000).toISOString(),
-        logs: [
-          { node_id: '1', node_type: 'manual_trigger', status: 'completed', timestamp: new Date().toISOString() },
-          { node_id: '2', node_type: 'http_request', status: 'failed', error: 'Connection timeout', timestamp: new Date().toISOString() },
-        ],
-      },
-    ];
+  const fetchHistory = useCallback(async () => {
+    if (!workflowId) return;
     
-    setHistory(mockHistory);
-  }, []);
+    setLoading(true);
+    try {
+      const response = await fetch(`${API_URL}/api/workflows/${workflowId}/history`);
+      const data = await response.json();
+      
+      if (Array.isArray(data)) {
+        setHistory(data);
+      } else if (data.executions) {
+        setHistory(data.executions);
+      } else {
+        setHistory([]);
+      }
+    } catch (err) {
+      console.error("Failed to fetch history:", err);
+    }
+    setLoading(false);
+  }, [workflowId]);
+  
+  useEffect(() => {
+    fetchHistory();
+  }, [fetchHistory]);
   
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -65,8 +64,27 @@ export function WorkflowHistory() {
     const startTime = new Date(start).getTime();
     const endTime = new Date(end).getTime();
     const seconds = Math.round((endTime - startTime) / 1000);
-    return `${seconds}s`;
+    if (seconds < 60) return `${seconds}s`;
+    return `${Math.floor(seconds / 60)}m ${seconds % 60}s`;
   };
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'completed': return '✅';
+      case 'failed': return '❌';
+      case 'running': return '⏳';
+      default: return '⏸️';
+    }
+  };
+  
+  if (!workflowId) {
+    return (
+      <div className="text-center py-8">
+        <p className="text-gray-500">💾 Save a workflow first</p>
+        <p className="text-sm text-gray-400 mt-1">History will appear after you save and run a workflow</p>
+      </div>
+    );
+  }
   
   return (
     <div className="space-y-4">
@@ -75,14 +93,19 @@ export function WorkflowHistory() {
           📜 Workflow History
         </h3>
         <button
-          onClick={() => setHistory(history)}
-          className="px-3 py-1 text-sm bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 rounded-lg"
+          onClick={fetchHistory}
+          disabled={loading}
+          className="px-3 py-1 text-sm bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 rounded-lg disabled:opacity-50"
         >
-          🔄 Refresh
+          {loading ? '⏳' : '🔄'} Refresh
         </button>
       </div>
       
-      {history.length === 0 ? (
+      {loading && history.length === 0 ? (
+        <div className="text-center py-8">
+          <p className="text-gray-500">Loading history...</p>
+        </div>
+      ) : history.length === 0 ? (
         <div className="text-center py-8">
           <p className="text-gray-500">No execution history yet</p>
           <p className="text-sm text-gray-400 mt-1">Run a workflow to see its history here</p>
@@ -97,6 +120,8 @@ export function WorkflowHistory() {
                   ? 'border-green-200 dark:border-green-800' 
                   : execution.status === 'failed'
                   ? 'border-red-200 dark:border-red-800'
+                  : execution.status === 'running'
+                  ? 'border-yellow-200 dark:border-yellow-800'
                   : 'border-gray-200 dark:border-gray-700'
               }`}
             >
@@ -106,11 +131,7 @@ export function WorkflowHistory() {
               >
                 <div className="flex justify-between items-start">
                   <div className="flex items-center gap-2">
-                    <span className={`w-2 h-2 rounded-full ${
-                      execution.status === 'completed' ? 'bg-green-500' :
-                      execution.status === 'failed' ? 'bg-red-500' :
-                      'bg-yellow-500'
-                    }`} />
+                    <span>{getStatusIcon(execution.status)}</span>
                     <span className="font-medium text-sm capitalize">
                       {execution.status}
                     </span>
@@ -120,35 +141,52 @@ export function WorkflowHistory() {
                   </span>
                 </div>
                 <div className="flex justify-between items-center mt-1 text-xs text-gray-500">
-                  <span>ID: {execution.id.slice(0, 8)}...</span>
+                  <span>ID: {execution.id.slice(0, 12)}...</span>
                   <span>Duration: {getDuration(execution.started_at, execution.completed_at)}</span>
                 </div>
               </div>
               
               {expandedId === execution.id && (
                 <div className="border-t border-gray-200 dark:border-gray-700 p-3 bg-gray-50 dark:bg-gray-800">
-                  <h4 className="font-medium text-sm mb-2">Execution Logs:</h4>
-                  <div className="space-y-2 max-h-48 overflow-y-auto">
-                    {execution.logs.map((log: any, index: number) => (
-                      <div
-                        key={index}
-                        className={`p-2 rounded text-xs ${
-                          log.status === 'completed' ? 'bg-green-100 dark:bg-green-900/50' :
-                          log.status === 'failed' ? 'bg-red-100 dark:bg-red-900/50' :
-                          'bg-blue-100 dark:bg-blue-900/50'
-                        }`}
-                      >
-                        <div className="flex justify-between">
-                          <span className="font-medium">{log.node_type}</span>
-                          <span className="text-gray-500">{formatDate(log.timestamp)}</span>
-                        </div>
-                        {log.error && (
-                          <p className="text-red-600 mt-1">❌ {log.error}</p>
-                        )}
-                      </div>
-                    ))}
-                  </div>
+                  {/* Error message if failed */}
+                  {execution.error && (
+                    <div className="mb-3 p-2 bg-red-100 dark:bg-red-900/30 rounded text-sm text-red-700 dark:text-red-300">
+                      ❌ {execution.error}
+                    </div>
+                  )}
                   
+                  {/* Execution logs */}
+                  {execution.logs && execution.logs.length > 0 && (
+                    <>
+                      <h4 className="font-medium text-sm mb-2">Execution Logs:</h4>
+                      <div className="space-y-2 max-h-48 overflow-y-auto">
+                        {execution.logs.map((log: any, index: number) => (
+                          <div
+                            key={index}
+                            className={`p-2 rounded text-xs ${
+                              log.status === 'completed' ? 'bg-green-100 dark:bg-green-900/50' :
+                              log.status === 'failed' ? 'bg-red-100 dark:bg-red-900/50' :
+                              'bg-blue-100 dark:bg-blue-900/50'
+                            }`}
+                          >
+                            <div className="flex justify-between">
+                              <span className="font-medium">{log.node_name || log.node_type}</span>
+                              <span className={`px-1.5 py-0.5 rounded text-xs ${
+                                log.status === 'completed' ? 'bg-green-200 dark:bg-green-800' : 'bg-red-200 dark:bg-red-800'
+                              }`}>
+                                {log.status}
+                              </span>
+                            </div>
+                            {log.error && (
+                              <p className="text-red-600 mt-1">❌ {log.error}</p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                  
+                  {/* Final result */}
                   {execution.result && (
                     <div className="mt-3">
                       <h4 className="font-medium text-sm mb-1">Final Result:</h4>

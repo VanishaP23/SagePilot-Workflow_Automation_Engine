@@ -25,6 +25,22 @@ interface WorkflowState {
   redo: () => void;
   canUndo: () => boolean;
   canRedo: () => boolean;
+  
+  // Helper to save snapshot before meaningful changes
+  _saveSnapshot: () => void;
+}
+
+// Check if a node change is meaningful enough for undo history
+function isMeaningfulNodeChange(change: NodeChange): boolean {
+  // Only track add/remove as meaningful undo-able changes
+  // Position changes from dragging happen too frequently
+  if (change.type === 'add' || change.type === 'remove') return true;
+  return false;
+}
+
+function isMeaningfulEdgeChange(change: EdgeChange): boolean {
+  if (change.type === 'add' || change.type === 'remove') return true;
+  return false;
 }
 
 export const useWorkflowStore = create<WorkflowState>((set, get) => ({
@@ -37,28 +53,37 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
   past: [],
   future: [],
   
-  // Save state to history before making changes
+  _saveSnapshot: () => {
+    const { nodes, edges, past } = get();
+    // Limit history to 50 entries to prevent memory issues
+    const newPast = [...past, { nodes: JSON.parse(JSON.stringify(nodes)), edges: JSON.parse(JSON.stringify(edges)) }];
+    if (newPast.length > 50) newPast.shift();
+    set({ past: newPast, future: [] });
+  },
+  
   onNodesChange: (changes) => {
-    const current = { nodes: get().nodes, edges: get().edges };
-    set({ past: [...get().past, current], future: [] });
+    const hasMeaningful = changes.some(isMeaningfulNodeChange);
+    if (hasMeaningful) {
+      get()._saveSnapshot();
+    }
     set({ nodes: applyNodeChanges(changes, get().nodes) });
   },
   
   onEdgesChange: (changes) => {
-    const current = { nodes: get().nodes, edges: get().edges };
-    set({ past: [...get().past, current], future: [] });
+    const hasMeaningful = changes.some(isMeaningfulEdgeChange);
+    if (hasMeaningful) {
+      get()._saveSnapshot();
+    }
     set({ edges: applyEdgeChanges(changes, get().edges) });
   },
   
   onConnect: (connection) => {
-    const current = { nodes: get().nodes, edges: get().edges };
-    set({ past: [...get().past, current], future: [] });
+    get()._saveSnapshot();
     set({ edges: addEdge({ ...connection, animated: true }, get().edges) });
   },
   
   addNode: (type, position) => {
-    const current = { nodes: get().nodes, edges: get().edges };
-    set({ past: [...get().past, current], future: [] });
+    get()._saveSnapshot();
     
     const newNode = {
       id: `${type}-${Date.now()}`,
@@ -76,10 +101,10 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
     set({ selectedNode: node });
   },
   
- updateNodeConfig: (nodeId, config) => {
+  updateNodeConfig: (nodeId, config) => {
+    get()._saveSnapshot();
     const nodes = get().nodes.map((node) => {
       if (node.id === nodeId) {
-        // Cast node.data to the correct type
         const nodeData = node.data as { label: string; config: any };
         const nodeConfig = nodeData.config as any;
         return { 
@@ -110,7 +135,7 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
     
     set({
       past: newPast,
-      future: [{ nodes, edges }, ...future],
+      future: [{ nodes: JSON.parse(JSON.stringify(nodes)), edges: JSON.parse(JSON.stringify(edges)) }, ...future],
       nodes: previous.nodes,
       edges: previous.edges,
       selectedNode: null,
@@ -125,7 +150,7 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
     const newFuture = future.slice(1);
     
     set({
-      past: [...past, { nodes, edges }],
+      past: [...past, { nodes: JSON.parse(JSON.stringify(nodes)), edges: JSON.parse(JSON.stringify(edges)) }],
       future: newFuture,
       nodes: next.nodes,
       edges: next.edges,
