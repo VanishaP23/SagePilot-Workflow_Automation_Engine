@@ -1,0 +1,9 @@
+HTTP/1.1 200 OK
+date: Mon, 23 Mar 2026 12:01:59 GMT
+server: uvicorn
+content-length: 74
+content-type: application/json
+access-control-allow-origin: *
+access-control-allow-credentials: true
+
+{"id":"1cdb8d31-0d43-4f6f-83f8-1bb220b24870","message":"Workflow created"}

@@ -1,4 +1,5 @@
 import asyncio
+import uuid
 from temporalio.client import Client
 from temporalio.worker import Worker
 from ..config import settings
@@ -25,10 +26,12 @@ async def get_temporal_client() -> Client:
 async def execute_workflow(workflow_id: str, nodes: list, edges: list, initial_payload: dict = None):
     client = await get_temporal_client()
     
+    run_id = f"wf-{workflow_id[:8]}-{uuid.uuid4().hex[:8]}"
+    
     result = await client.execute_workflow(
         WorkflowExecutorWorkflow.run,
         [workflow_id, nodes, edges, initial_payload],
-        id_prefix=f"wf-{workflow_id[:8]}",
+        id=run_id,
         task_queue="sage-pilot-tasks"
     )
     

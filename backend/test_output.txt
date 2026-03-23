@@ -1,0 +1,9 @@
+Traceback (most recent call last):
+  File "C:\Users\Vanisha\Desktop\SagePilot Project\SagePilot-Workflow_Automation_Engine\backend\test_db.py", line 10, in test
+    res = await create_workflow(req)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Vanisha\Desktop\SagePilot Project\SagePilot-Workflow_Automation_Engine\backend\app\api\workflows.py", line 40, in create_workflow
+    response = db.table("workflows").insert(data).execute()
+  File "C:\Users\Vanisha\Desktop\SagePilot Project\SagePilot-Workflow_Automation_Engine\backend\venv\Lib\site-packages\postgrest\_sync\request_builder.py", line 53, in execute
+    raise APIError(dict(json_obj))
+postgrest.exceptions.APIError: {'message': "Could not find the 'description' column of 'workflows' in the schema cache", 'code': 'PGRST204', 'hint': None, 'details': None}
