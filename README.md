@@ -19,15 +19,15 @@ A powerful visual workflow automation engine inspired by n8n, Temporal, and Zapi
 
 ### Core Features
 - **Visual Workflow Builder** - Drag-and-drop interface with React Flow
-- **7 Node Types** - Manual, Webhook, HTTP Request, Transform, Decision, Wait, End
+- **7 Node Types** - Manual Trigger, Webhook Trigger, HTTP Request, Transform, Decision, Wait, End
 - **DAG Validation** - Cycle detection using Kahn's Algorithm before execution
 - **Real-time Execution** - Monitor workflow execution with live status updates
 - **Durable Execution** - Powered by Temporal for fault-tolerant workflows
-- **Retry Configuration** - Customizable retry policies for each node
+- **Retry Configuration** - Customizable retry policies for each HTTP Request node
 
 ### Bonus Features ✅
 - **Undo/Redo** - Full history navigation with Ctrl+Z / Ctrl+Y
-- **Execution Status Polling** - Real-time execution monitoring
+- **Execution Status** - Real-time execution monitoring in dedicated tab
 - **Workflow History** - Complete audit trail stored in Supabase
 - **Dark Mode** - Toggle between light and dark themes
 
@@ -48,11 +48,11 @@ A powerful visual workflow automation engine inspired by n8n, Temporal, and Zapi
 │                                    ┌────────────────┼────────────────┐       │
 │                                    ▼                ▼                ▼       │
 │                              ┌──────────┐   ┌────────────┐   ┌──────────┐   │
-│                              │  SUPABASE │   │  TEMPORAL  │   │   HTTP   │   │
-│                              │    DB     │   │   CLOUD    │   │   APIs   │   │
+│                              │ SUPABASE │   │  TEMPORAL  │   │   HTTP   │   │
+│                              │    DB    │   │   CLOUD    │   │   APIs   │   │
 │                              └──────────┘   └────────────┘   └──────────┘   │
-│                                   │                │                          │
-└───────────────────────────────────┴────────────────┴──────────────────────────┘
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -62,15 +62,17 @@ A powerful visual workflow automation engine inspired by n8n, Temporal, and Zapi
 ```
 ┌─────────────┐     ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
 │   USER      │────►│   FRONTEND   │────►│   API       │────►│   DAG       │
-│   Action    │     │   Request    │     │   Receive   │     │   Validate  │
+│   Clicks    │     │   Save/Run   │     │   Receive   │     │   Validate  │
+│   Run       │     │   Request    │     │             │     │   Graph     │
 └─────────────┘     └─────────────┘     └─────────────┘     └─────────────┘
                                                                       │
-      ┌──────────────────────────────────────────────────────────────┘
-      │
-      ▼
+                          ┌────────────────────────────────────────────┘
+                          │
+                          ▼
 ┌─────────────┐     ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
 │  TEMPORAL   │────►│   EXECUTE   │────►│   SAVE      │────►│  FRONTEND   │
 │  Workflow   │     │   Nodes     │     │   Logs      │     │   Display   │
+│  Engine     │     │  Sequentially│    │   to DB     │     │   Results   │
 └─────────────┘     └─────────────┘     └─────────────┘     └─────────────┘
 ```
 
@@ -81,31 +83,47 @@ A powerful visual workflow automation engine inspired by n8n, Temporal, and Zapi
 | Node | Icon | Description | Configuration |
 |------|------|-------------|---------------|
 | **Manual Trigger** | 🖱️ | Start workflow manually | Input payload (JSON) |
-| **Webhook Trigger** | 🪝 | Start workflow via webhook | Auto-generated URL |
+| **Webhook Trigger** | 🪝 | Start workflow via HTTP webhook | Auto-generated webhook URL |
 | **HTTP Request** | 📡 | Make external API calls | URL, Method, Headers, Body, Retry Settings |
 | **Transform Data** | 🔄 | Transform input data | Transformation type, Target field |
 | **Decision** | 🤔 | Branch based on condition | Field, Operator, Value (True/False branches) |
 | **Wait** | ⏰ | Pause execution (durable) | Duration (seconds/minutes/hours) |
-| **End** | 🏁 | Terminate workflow | Final output |
+| **End** | 🏁 | Terminate workflow | Final output message |
+
+### Decision Node Branches
+The Decision node creates two execution paths:
+- 🟢 **True Branch** - Executed when condition evaluates to true
+- 🔴 **False Branch** - Executed when condition evaluates to false
 
 ---
 
 ## 🔧 Technical Highlights
 
-### DAG Validation (Kahn's Algorithm)
+### 1. DAG Validation (Kahn's Algorithm)
 Before any workflow executes, the system validates that the workflow is a valid Directed Acyclic Graph:
 - Detects cycles that would cause infinite loops
 - Returns 400 error with "Cycle detected in workflow" message
 - O(V+E) time complexity
 
-### Durable Wait (workflow.sleep)
+```python
+# Location: backend/app/utils/dag_validator.py
+def validate_dag(nodes: list, edges: list) -> tuple[bool, str]:
+    # Kahn's algorithm implementation
+```
+
+### 2. Durable Wait (workflow.sleep)
 The Wait node uses Temporal's `workflow.sleep()`:
 - Survives worker restarts
 - Timer continues from where it left off
 - Does NOT use `time.sleep()` or `asyncio.sleep()`
 
-### Execution Logging
-Every node execution is logged with:
+```python
+# Location: backend/app/temporal/workflows.py
+await workflow.sleep(duration_seconds)  # Durable pause
+```
+
+### 3. Execution Logging
+Every node execution is logged with detailed information:
 - Node ID and name
 - Node type
 - Status (completed/failed)
@@ -147,34 +165,34 @@ SagePilot-Workflow_Automation_Engine/
 │   │   │   └── globals.css           # Global styles
 │   │   ├── components/
 │   │   │   ├── Canvas.tsx            # React Flow canvas
-│   │   │   ├── NodePalette.tsx      # Node selection panel
-│   │   │   ├── ConfigPanel.tsx      # Node configuration
-│   │   │   ├── ExecutionStatus.tsx  # Real-time monitoring
-│   │   │   ├── WorkflowHistory.tsx   # Past executions
+│   │   │   ├── NodePalette.tsx       # Node selection panel
+│   │   │   ├── ConfigPanel.tsx       # Node configuration
+│   │   │   ├── ExecutionStatus.tsx   # Real-time monitoring
+│   │   │   ├── WorkflowHistory.tsx    # Past executions
 │   │   │   └── nodes/
-│   │   │       └── CustomNode.tsx   # Custom node UI
+│   │   │       └── CustomNode.tsx    # Custom node UI with handles
 │   │   └── store/
-│   │       └── workflowStore.ts      # Zustand with Undo/Redo
+│   │       └── workflowStore.ts       # Zustand with Undo/Redo
 │   └── package.json
 ├── backend/
 │   ├── app/
 │   │   ├── main.py                   # FastAPI entry point
-│   │   ├── config.py                # Environment config
-│   │   ├── database.py              # Supabase client
+│   │   ├── config.py                 # Environment config
+│   │   ├── database.py               # Supabase client
 │   │   ├── api/
-│   │   │   ├── workflows.py         # CRUD endpoints
-│   │   │   ├── execution.py         # Run workflow + DAG validation
-│   │   │   ├── webhooks.py          # Webhook triggers
-│   │   │   └── history.py           # Execution history
+│   │   │   ├── workflows.py          # CRUD endpoints
+│   │   │   ├── execution.py          # Run workflow + DAG validation
+│   │   │   ├── webhooks.py           # Webhook triggers
+│   │   │   └── history.py            # Execution history
 │   │   ├── temporal/
-│   │   │   ├── client.py            # Temporal client
-│   │   │   ├── workflows.py         # Workflow definitions
+│   │   │   ├── client.py             # Temporal client
+│   │   │   ├── workflows.py          # Workflow definitions
 │   │   │   └── activities.py        # Node activities
 │   │   ├── models/
-│   │   │   └── workflow.py          # Pydantic models
+│   │   │   └── workflow.py           # Pydantic models
 │   │   └── utils/
 │   │       ├── __init__.py
-│   │       └── dag_validator.py     # Kahn's algorithm
+│   │       └── dag_validator.py      # Kahn's algorithm
 │   ├── Dockerfile
 │   └── requirements.txt
 └── README.md
@@ -190,13 +208,13 @@ SagePilot-Workflow_Automation_Engine/
 - npm or yarn
 - Git
 
-### Clone & Setup
+### Clone the Repository
 ```bash
 git clone https://github.com/VanishaP23/SagePilot-Workflow_Automation_Engine.git
 cd SagePilot-Workflow_Automation_Engine
 ```
 
-### Frontend
+### Frontend Setup
 ```bash
 cd frontend
 npm install
@@ -204,7 +222,7 @@ npm run dev
 # Open http://localhost:3000
 ```
 
-### Backend
+### Backend Setup
 ```bash
 cd backend
 python -m venv venv
@@ -215,13 +233,13 @@ uvicorn app.main:app --reload
 ```
 
 ### Environment Variables
+Create a `backend/.env` file:
 ```env
-# backend/.env
-SUPABASE_URL=your_supabase_url
+SUPABASE_URL=https://wglojqkqycsibloronjx.supabase.co
 SUPABASE_KEY=your_supabase_key
-TEMPORAL_HOST=your_temporal_host
-TEMPORAL_NAMESPACE=your_namespace
-TEMPORAL_API_KEY=your_api_key
+TEMPORAL_HOST=quickstart-pathakvan-4da80dcc.pj6yk.tmprl.cloud:7233
+TEMPORAL_NAMESPACE=quickstart-pathakvan-4da80dcc
+TEMPORAL_API_KEY=your_temporal_api_key
 ```
 
 ---
@@ -239,19 +257,29 @@ TEMPORAL_API_KEY=your_api_key
 | POST | `/api/workflows/{id}/run` | Execute workflow |
 | GET | `/api/workflows/{id}/history` | Get execution history |
 
-### Execution Response
+### API Response Examples
+
+**Create Workflow Response:**
 ```json
 {
-  "execution_id": "uuid",
-  "status": "completed|failed|running",
+  "id": "uuid-string",
+  "message": "Workflow created"
+}
+```
+
+**Execute Workflow Response:**
+```json
+{
+  "execution_id": "uuid-string",
+  "status": "completed|failed",
   "logs": [
     {
       "node_id": "node-123",
       "node_name": "HTTP Request",
       "node_type": "http_request",
       "status": "completed",
-      "input": {...},
-      "output": {...},
+      "input": {"message": "Hello"},
+      "output": {"response": "Hi there!"},
       "timestamp": "2024-01-01T00:00:00Z"
     }
   ]
@@ -264,23 +292,32 @@ TEMPORAL_API_KEY=your_api_key
 
 ### Creating a Workflow
 1. Enter workflow name in the top input box
-2. Click nodes from the **Node Palette** to add them
-3. **Connect nodes** by dragging from output (right) to input (left)
+2. Click nodes from the **Node Palette** (left sidebar) to add them
+3. **Connect nodes** by dragging from output handle (right side) to input handle (left side)
 4. **Click a node** to configure its settings in the right panel
 5. Click **💾 Save** to persist to database
 6. Click **▶️ Run** to execute
 
+### How to Connect Nodes
+- Drag from the **right side** (output) of one node
+- Drop on the **left side** (input) of another node
+- For Decision nodes: use **T** (green) or **F** (red) handles for branching
+
 ### Node Configuration
-- **Manual Trigger:** Edit input payload JSON
-- **HTTP Request:** Set URL, method, headers, body, retry settings
-- **Transform:** Choose transformation type, set target field
-- **Decision:** Set field, operator, and value for branching
-- **Wait:** Set duration and unit (seconds/minutes/hours)
+| Node | Settings |
+|------|----------|
+| **Manual Trigger** | Edit input payload JSON |
+| **HTTP Request** | Set URL, method (GET/POST/PUT/DELETE), headers, body, retry settings |
+| **Transform** | Choose transformation type, set target field |
+| **Decision** | Set field, operator (equals, contains, greater_than, etc.), value |
+| **Wait** | Set duration and unit (seconds/minutes/hours) |
 
 ### Bonus Features
-- **Undo/Redo:** Ctrl+Z / Ctrl+Y
+- **Undo:** Press Ctrl+Z
+- **Redo:** Press Ctrl+Y
 - **Dark Mode:** Click the 🌙/☀️ button
 - **History:** Click the 📜 History tab
+- **Clear Workflow:** Click ➕ New button
 
 ---
 
@@ -291,6 +328,7 @@ TEMPORAL_API_KEY=your_api_key
 |--------|------|-------------|
 | id | TEXT | UUID primary key |
 | name | TEXT | Workflow name |
+| description | TEXT | Workflow description |
 | nodes | JSONB | Array of node definitions |
 | edges | JSONB | Array of edge definitions |
 | created_at | TIMESTAMP | Creation time |
@@ -311,10 +349,27 @@ TEMPORAL_API_KEY=your_api_key
 
 ## 🔐 Security
 
-- API keys stored in environment variables (never committed)
+- API keys stored in environment variables (never committed to git)
 - CORS configured for production domains
 - Input validation via Pydantic models
 - SQL injection prevention via Supabase SDK
+
+---
+
+## 🔧 Troubleshooting
+
+### "Save failed" Error
+1. Check if backend is running: `http://localhost:8000/health`
+2. Verify Supabase environment variables are set
+3. Check Render logs for backend errors
+
+### "Workflow not found" Error
+1. Save the workflow first before running
+2. Ensure workflow ID is properly tracked in frontend
+
+### Connection Line Not Appearing
+1. Ensure nodes have handles (input on left, output on right)
+2. Check CustomNode.tsx for proper Handle component setup
 
 ---
 
